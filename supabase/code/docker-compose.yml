@@ -358,7 +358,7 @@ services:
     restart: unless-stopped
     
     networks:
-      default:
+      default: {}
       traffic_lion:
         aliases:
           - supabase-db
