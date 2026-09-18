@@ -363,7 +363,7 @@ services:
         aliases:
           - supabase-db
           
-      volumes:
+    volumes:
       - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
       # Must be superuser to create event trigger
       - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
@@ -487,6 +487,7 @@ volumes:
   db-config:
   
 networks:
+  default:
   traffic_lion:
     external: true
     name: easypanel-traffic-lion
