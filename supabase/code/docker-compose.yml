@@ -356,7 +356,14 @@ services:
   db:
     image: supabase/postgres:15.8.1.060
     restart: unless-stopped
-    volumes:
+    
+    networks:
+      default:
+      traffic_lion:
+        aliases:
+          - supabase-db
+          
+      volumes:
       - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
       # Must be superuser to create event trigger
       - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
@@ -478,3 +485,8 @@ services:
 
 volumes:
   db-config:
+  
+networks:
+  traffic_lion:
+    external: true
+    name: easypanel-traffic-lion
