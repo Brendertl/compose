@@ -1,0 +1,22 @@
+FROM node@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS portable_python
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates=20250419~deb12u2 && rm -rf /var/lib/apt/lists/*
+ARG PYTHON_URL=https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.13.17%2B20261021-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz
+ARG PYTHON_SHA256=f829adc9d888e76c8801b4799ed444188d35239fcae3a9808a99ec5cb0d8d92c
+RUN node -e "const fs=require('fs'),crypto=require('crypto');fetch(process.env.PYTHON_URL).then(async r=>{if(!r.ok)throw Error('Download failed');const b=Buffer.from(await r.arrayBuffer());if(crypto.createHash('sha256').update(b).digest('hex')!==process.env.PYTHON_SHA256)throw Error('Digest mismatch');fs.writeFileSync('/tmp/python.tar.gz',b)}).catch(e=>{console.error(e.message);process.exit(1)})"
+RUN mkdir -p /opt/python && tar -xzf /tmp/python.tar.gz -C /opt/python --strip-components=1 --no-same-owner && chown -R root:root /opt/python && rm /tmp/python.tar.gz
+RUN node -e "const fs=require('fs'),crypto=require('crypto');fetch('https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl').then(async r=>{if(!r.ok)throw Error('pip download failed');const b=Buffer.from(await r.arrayBuffer());if(crypto.createHash('sha256').update(b).digest('hex')!=='fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70')throw Error('pip digest mismatch');fs.writeFileSync('/tmp/pip-security.whl',b)}).catch(e=>{console.error(e.message);process.exit(1)})"
+FROM supabase/postgres@sha256:0e2279598bc0224fb5960c3a61eb23270cd60119427f3a7bdec86ba282600dcc
+RUN set -eu; : > /tmp/postgres-before.unsorted; for p in "$(dirname "$(readlink -f "$(command -v postgres)")")" "$(pg_config --pkglibdir)" "$(pg_config --sharedir)/extension"; do test -d "$p"; find -L "$p" -type f -exec sha256sum {} + >> /tmp/postgres-before.unsorted; done; sort -u /tmp/postgres-before.unsorted > /tmp/postgres-before.sha256
+RUN test -s /tmp/postgres-before.sha256 && apt-get -y purge python3.8 python3.8-minimal libpython3.8-minimal libpython3.8-stdlib && sha256sum -c /tmp/postgres-before.sha256 >/dev/null && test ! -e /usr/bin/python3.8 && test ! -e /usr/lib/x86_64-linux-gnu/libpython3.8.so.1.0 && rm -rf /var/lib/apt/lists/*
+COPY --from=portable_python /opt/python /opt/trafficlion/python3.13
+RUN rm -f /usr/share/ca-certificates/mozilla/*.crt
+COPY --from=portable_python /usr/share/ca-certificates/mozilla/ /usr/share/ca-certificates/mozilla/
+COPY --from=portable_python /etc/ca-certificates.conf /etc/ca-certificates.conf
+RUN update-ca-certificates --fresh >/dev/null && ln -sf /opt/trafficlion/python3.13/bin/python3.13 /usr/local/bin/python3 && ln -sf /opt/trafficlion/python3.13/bin/python3.13 /usr/local/bin/python && ln -sf /opt/trafficlion/python3.13/bin/python3.13 /usr/bin/python3 && sha256sum -c /tmp/postgres-before.sha256 >/dev/null
+ENV PYTHON_VERSION=3.13.17 SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+RUN python3 -I -c "import sys,ssl,sqlite3,ctypes,lzma,bz2,zlib;assert sys.version_info[:3]==(3,13,17);print(sys.version,ssl.OPENSSL_VERSION)" && python3 -m pip --version
+LABEL trafficlion.python-maintenance="20261024-portable-python3.13.17" trafficlion.python-source="astral-sh/python-build-standalone-20261021"
+
+COPY patch-python-security.py /usr/local/share/trafficlion/patch-python-security.py
+COPY --from=portable_python /tmp/pip-security.whl /tmp/pip-security.whl
+RUN python3 /usr/local/share/trafficlion/patch-python-security.py --pip-wheel /tmp/pip-security.whl && rm /tmp/pip-security.whl
