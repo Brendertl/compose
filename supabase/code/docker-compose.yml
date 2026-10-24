@@ -10,7 +10,11 @@ name: supabase
 services:
 
   studio:
-    image: supabase/studio:2025.05.19-sha-3487831
+    image: trafficlion/supabase-studio:node22.23.4-20261024
+    pull_policy: build
+    build:
+      context: ./node-security-20261024
+      dockerfile: Dockerfile.studio.node22
     restart: unless-stopped
     healthcheck:
       test:
@@ -221,7 +225,11 @@ services:
 
   # To use S3 backed storage: docker compose -f docker-compose.yml -f docker-compose.s3.yml up
   storage:
-    image: supabase/storage-api:v1.22.17
+    image: trafficlion/supabase-storage:node22.23.4-20261024
+    pull_policy: build
+    build:
+      context: ./node-security-20261024
+      dockerfile: Dockerfile.storage.node22
     restart: unless-stopped
     volumes:
       - ./volumes/storage:/var/lib/storage:z
@@ -279,7 +287,11 @@ services:
       IMGPROXY_ENABLE_WEBP_DETECTION: ${IMGPROXY_ENABLE_WEBP_DETECTION}
 
   meta:
-    image: supabase/postgres-meta:v0.89.0
+    image: trafficlion/supabase-meta:node22.23.4-20261024
+    pull_policy: build
+    build:
+      context: ./node-security-20261024
+      dockerfile: Dockerfile.meta.node22
     restart: unless-stopped
     depends_on:
       db:
