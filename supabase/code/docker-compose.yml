@@ -10,11 +10,11 @@ name: supabase
 services:
 
   studio:
-    image: trafficlion/supabase-studio:node22.23.4-20261024
+    image: trafficlion/supabase-studio:node22.23.4-python-sec-20261024
     pull_policy: build
     build:
-      context: ./node-security-20261024
-      dockerfile: Dockerfile.studio.node22
+      context: ./python-security-20261024
+      dockerfile: Dockerfile.studio.python
     restart: unless-stopped
     healthcheck:
       test:
@@ -225,11 +225,11 @@ services:
 
   # To use S3 backed storage: docker compose -f docker-compose.yml -f docker-compose.s3.yml up
   storage:
-    image: trafficlion/supabase-storage:node22.23.4-20261024
+    image: trafficlion/supabase-storage:node22.23.4-python3.12.15-20261024
     pull_policy: build
     build:
-      context: ./node-security-20261024
-      dockerfile: Dockerfile.storage.node22
+      context: ./python-security-20261024
+      dockerfile: Dockerfile.storage.python
     restart: unless-stopped
     volumes:
       - ./volumes/storage:/var/lib/storage:z
@@ -366,7 +366,11 @@ services:
 
       # Comment out everything below this point if you are using an external Postgres database
   db:
-    image: supabase/postgres:15.8.1.060
+    image: trafficlion/supabase-postgres:15.8.1.060-python3.13.17-20261024
+    pull_policy: build
+    build:
+      context: ./python-security-20261024
+      dockerfile: Dockerfile.db.python
     restart: unless-stopped
     
     networks:
