@@ -1,0 +1,7 @@
+FROM easypanel/easypanel@sha256:9af9b2f275120b5d6a05bc52a880d7a36f0c7c0f7077f54bc42be3dd5ce7db40
+
+COPY patch-python-security.py /usr/local/share/trafficlion/patch-python-security.py
+RUN node -e "const fs=require('fs'),crypto=require('crypto');fetch('https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl').then(async r=>{if(!r.ok)throw Error('pip download failed');const b=Buffer.from(await r.arrayBuffer());if(crypto.createHash('sha256').update(b).digest('hex')!=='fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70')throw Error('pip digest mismatch');fs.writeFileSync('/tmp/pip-security.whl',b)}).catch(e=>{console.error(e.message);process.exit(1)})"
+RUN python3 /usr/local/share/trafficlion/patch-python-security.py --pip-wheel /tmp/pip-security.whl && rm /tmp/pip-security.whl
+RUN python3 -I -c "import ensurepip;assert ensurepip.version()=='26.2.2'" && node -e "if(process.version!=='v22.23.4')process.exit(1)"
+LABEL trafficlion.python-maintenance="20261024-pip26.2.2"
