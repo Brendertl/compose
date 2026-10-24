@@ -1,0 +1,11 @@
+FROM node@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS runtime
+FROM runtime AS profiler
+WORKDIR /tmp/profiler
+RUN npm pack @sentry-internal/node-cpu-profiler@2.1.0 --json > pack.json && node -e "const p=require('./pack.json')[0];if(p.integrity!=='sha512-/gPj8ARZ8Jw8gCQWToCiUyLoOxBDP8wuFNx07mAXegYiDa4NcIvo37ZzDWaTG+wjwa/LvCpHxHff6pejt4KOKg=='||p.filename!=='sentry-internal-node-cpu-profiler-2.1.0.tgz')process.exit(1)" && tar -xzf sentry-internal-node-cpu-profiler-2.1.0.tgz
+FROM supabase/postgres-meta@sha256:8f7f0090850690847d9e1fc30b75511eeb6cac0c63317ec593a5dd384af2ae76
+COPY --from=runtime /usr/local/bin/node /usr/local/bin/node
+ENV NODE_VERSION=22.23.4
+RUN node -e "if(process.version!=='v22.23.4')process.exit(1);console.log(process.version)"
+LABEL trafficlion.maintenance="supabase-node-20261024"
+COPY --from=profiler /tmp/profiler/package/lib/sentry_cpu_profiler-linux-x64-glibc-127.node /usr/src/app/node_modules/@sentry-internal/node-cpu-profiler/lib/
+RUN node -e "const p=require('@sentry-internal/node-cpu-profiler/lib/sentry_cpu_profiler-linux-x64-glibc-127.node');if(typeof p.startProfiling!=='function'||typeof p.stopProfiling!=='function')process.exit(1);console.log('sentry_node22_native_binding_ok')"
